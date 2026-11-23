@@ -1,3 +1,8 @@
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/886f4a05-0f31-4169-a0c9-30bec659d525" />
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/9638c3b1-bb5f-4d85-8565-b27f543f0eba" />
+
+
 # 🏡 Bengaluru House Price Predictor | Machine Learning Web Application
 
 [![Live Demo](https://img.shields.io/badge/Streamlit_Cloud-Live_Demo-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://banglorehousepriceprediction-cxd7x5fsvydqdjmp8ubng8.streamlit.app/)
