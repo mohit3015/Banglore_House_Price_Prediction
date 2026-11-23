@@ -1,5 +1,6 @@
 # 🏡 Bengaluru House Price Predictor | Machine Learning Web Application
 
+[![Live Demo](https://img.shields.io/badge/Streamlit_Cloud-Live_Demo-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://banglorehousepriceprediction-cxd7x5fsvydqdjmp8ubng8.streamlit.app/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35%2B-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
 [![Scikit-Learn](https://img.shields.io/badge/scikit--learn-Random%20Forest-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
@@ -157,6 +158,7 @@ The application will automatically start in your default web browser at `http://
 ## 👨‍💻 Author & Contact
 
 * **Developer:** **Mohit Kumar** (B.Tech CSE - AI/ML)
+* 🚀 **Live Streamlit App:** [banglorehousepriceprediction-cxd7x5fsvydqdjmp8ubng8.streamlit.app](https://banglorehousepriceprediction-cxd7x5fsvydqdjmp8ubng8.streamlit.app/)
 * 🌐 **Live Portfolio:** [https://mohit3015.github.io/Mohit-Portfolio/](https://mohit3015.github.io/Mohit-Portfolio/)
 * 🐙 **GitHub:** [@mohit3015](https://github.com/mohit3015)
 * 💼 **LinkedIn:** [Mohit Kumar](https://www.linkedin.com/in/mohit-kumar-9a33412b3/)
