@@ -1,29 +1,42 @@
 import json
 import time
 import warnings
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import pickle
 import streamlit as st
+
+warnings.filterwarnings("ignore")
+
+# ==========================================
+# ROBUST PATH RESOLUTION (FOR STREAMLIT CLOUD)
+# ==========================================
+BASE_DIR = Path(__file__).resolve().parent
+CLEANED_DATA_PATH = BASE_DIR / "cleaned_df.csv"
+MODEL_PATH = BASE_DIR / "RFmodel.pkl"
+HOME_ANIME_PATH = BASE_DIR / "home_anime.json"
+LOGO_PATH = BASE_DIR / "icons" / "house_logo.png"
+
+PAGE_ICON = str(LOGO_PATH) if LOGO_PATH.exists() else "🏡"
+
 try:
     from streamlit_lottie import st_lottie
     HAS_LOTTIE = True
 except Exception:
     HAS_LOTTIE = False
 
-warnings.filterwarnings("ignore")
-
 # ==========================================
 # PAGE CONFIGURATION
 # ==========================================
 st.set_page_config(
     page_title="Bengaluru House Price Predictor",
-    page_icon="icons/house_logo.png",
+    page_icon=PAGE_ICON,
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for polished cyber-clean look
+# Custom CSS for polished clean look
 st.markdown("""
 <style>
     .metric-card {
@@ -62,17 +75,16 @@ st.markdown("""
 @st.cache_data
 def load_data():
     """Loads and caches the cleaned dataset and location mappings."""
-    df = pd.read_csv("cleaned_df.csv")
+    df = pd.read_csv(CLEANED_DATA_PATH)
     if "Unnamed: 0" in df.columns:
         df = df.drop(columns=["Unnamed: 0"])
-    # Location map dictionary for instant O(1) lookup
     loc_map = dict(zip(df['location'], df['encoded_loc']))
     return df, loc_map
 
 @st.cache_resource
 def load_model():
     """Loads and caches the trained Random Forest model."""
-    with open("RFmodel.pkl", "rb") as file:
+    with open(MODEL_PATH, "rb") as file:
         model = pickle.load(file)
     return model
 
@@ -87,14 +99,15 @@ def load_lottie(filepath):
 
 df, loc_map = load_data()
 model = load_model()
-home_anime = load_lottie("home_anime.json")
+home_anime = load_lottie(HOME_ANIME_PATH) if HOME_ANIME_PATH.exists() else None
 
 
 # ==========================================
 # SIDEBAR
 # ==========================================
 with st.sidebar:
-    st.image("icons/house_logo.png", width=140)
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=140)
     st.title("Bengaluru Housing AI")
     st.markdown("Estimate property prices across Bangalore using **Machine Learning** trained on verified real-estate data.")
     
@@ -113,24 +126,34 @@ with st.sidebar:
 
 
 # ==========================================
-# NAVIGATION TABS
+# NAVIGATION TABS (WITH BACKWARD COMPATIBILITY)
 # ==========================================
 st.title("🏡 Bengaluru House Price Predictor")
 st.caption("Accurate real estate valuation powered by Random Forest regression & historical sales trends.")
 
-selection = st.segmented_control(
-    "Navigation",
-    options=["Predict Price", "Market Insights", "About Project"],
-    default="Predict Price",
-    label_visibility="collapsed"
-)
+nav_options = ["Predict Price", "Market Insights", "About Project"]
+
+if hasattr(st, "segmented_control"):
+    selection = st.segmented_control(
+        "Navigation",
+        options=nav_options,
+        default="Predict Price",
+        label_visibility="collapsed"
+    )
+else:
+    selection = st.radio(
+        "Navigation",
+        options=nav_options,
+        index=0,
+        horizontal=True,
+        label_visibility="collapsed"
+    )
 
 
 # ==========================================
-# MODAL DIALOG: PREDICTION RESULT
+# MODAL DIALOG / MODAL FALLBACK
 # ==========================================
-@st.dialog("🏡 Property Valuation Summary")
-def show_valuation_dialog(loc, sqft, bhk, bath, price_lakhs):
+def render_valuation_content(loc, sqft, bhk, bath, price_lakhs):
     total_price_inr = price_lakhs * 100000
     price_per_sqft = total_price_inr / sqft if sqft > 0 else 0
     
@@ -155,7 +178,6 @@ def show_valuation_dialog(loc, sqft, bhk, bath, price_lakhs):
         st.write(f"🚿 **Bathrooms:** {bath} Bath")
     
     # Home Loan EMI Estimator
-    # Loan = 80% of price, Interest = 8.5% p.a., Tenure = 20 years (240 months)
     loan_amount = total_price_inr * 0.80
     annual_rate = 0.085
     monthly_rate = annual_rate / 12
@@ -169,6 +191,20 @@ def show_valuation_dialog(loc, sqft, bhk, bath, price_lakhs):
     </div>
     """, unsafe_allow_html=True)
 
+if hasattr(st, "dialog"):
+    @st.dialog("🏡 Property Valuation Summary")
+    def show_valuation_dialog(loc, sqft, bhk, bath, price_lakhs):
+        render_valuation_content(loc, sqft, bhk, bath, price_lakhs)
+elif hasattr(st, "experimental_dialog"):
+    @st.experimental_dialog("🏡 Property Valuation Summary")
+    def show_valuation_dialog(loc, sqft, bhk, bath, price_lakhs):
+        render_valuation_content(loc, sqft, bhk, bath, price_lakhs)
+else:
+    def show_valuation_dialog(loc, sqft, bhk, bath, price_lakhs):
+        with st.container(border=True):
+            st.subheader("🏡 Property Valuation Summary")
+            render_valuation_content(loc, sqft, bhk, bath, price_lakhs)
+
 
 # ==========================================
 # TAB 1: PREDICT PRICE
@@ -176,28 +212,25 @@ def show_valuation_dialog(loc, sqft, bhk, bath, price_lakhs):
 if selection == "Predict Price":
     st.markdown("### 🎯 Enter Property Specifications")
     
-    # Popular locations quick pills
     popular_hubs = [
         "Whitefield", "Electronic City", "Sarjapur Road",
         "HSR Layout", "Koramangala", "Indiranagar",
         "Thanisandra", "Hebbal", "Yelahanka", "Marathahalli"
     ]
-    
-    # Filter available popular hubs that exist in dataset
     available_popular = [h for h in popular_hubs if h in df['location'].values]
     
-    st.markdown("**⚡ Quick Pick Popular Localities:**")
-    selected_quick_loc = st.pills(
-        "Popular Localities",
-        options=available_popular,
-        default=None,
-        label_visibility="collapsed"
-    )
+    selected_quick_loc = None
+    if hasattr(st, "pills") and available_popular:
+        st.markdown("**⚡ Quick Pick Popular Localities:**")
+        selected_quick_loc = st.pills(
+            "Popular Localities",
+            options=available_popular,
+            default=None,
+            label_visibility="collapsed"
+        )
     
-    # Sorted location list
     all_locations = sorted(df['location'].unique().tolist())
     
-    # Default index for selectbox
     default_idx = 0
     if selected_quick_loc and selected_quick_loc in all_locations:
         default_idx = all_locations.index(selected_quick_loc)
@@ -210,7 +243,6 @@ if selection == "Predict Price":
         with col1:
             loc = st.selectbox("📍 Location / Locality:", options=all_locations, index=default_idx)
             
-            # Easy number input with sensible defaults
             sqft = st.number_input(
                 "📐 Built-up Area (Total Sq. Ft.):",
                 min_value=300.0,
@@ -221,23 +253,37 @@ if selection == "Predict Price":
             )
         
         with col2:
-            bhk = st.pills(
-                "🛏️ Number of Bedrooms (BHK):",
-                options=[1, 2, 3, 4, 5],
-                format_func=lambda x: f"{x} BHK",
-                default=2
-            )
-            if bhk is None:
-                bhk = 2
-            
-            bath = st.pills(
-                "🚿 Number of Bathrooms:",
-                options=[1, 2, 3, 4, 5],
-                format_func=lambda x: f"{x} Bath",
-                default=2
-            )
-            if bath is None:
-                bath = 2
+            if hasattr(st, "pills"):
+                bhk = st.pills(
+                    "🛏️ Number of Bedrooms (BHK):",
+                    options=[1, 2, 3, 4, 5],
+                    format_func=lambda x: f"{x} BHK",
+                    default=2
+                )
+                if bhk is None:
+                    bhk = 2
+                
+                bath = st.pills(
+                    "🚿 Number of Bathrooms:",
+                    options=[1, 2, 3, 4, 5],
+                    format_func=lambda x: f"{x} Bath",
+                    default=2
+                )
+                if bath is None:
+                    bath = 2
+            else:
+                bhk = st.selectbox(
+                    "🛏️ Number of Bedrooms (BHK):",
+                    options=[1, 2, 3, 4, 5],
+                    index=1,
+                    format_func=lambda x: f"{x} BHK"
+                )
+                bath = st.selectbox(
+                    "🚿 Number of Bathrooms:",
+                    options=[1, 2, 3, 4, 5],
+                    index=1,
+                    format_func=lambda x: f"{x} Bath"
+                )
     
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     with col_btn2:
@@ -262,7 +308,6 @@ if selection == "Predict Price":
 elif selection == "Market Insights":
     st.markdown("### 📈 Bangalore Real Estate Market Analytics")
     
-    # Top Metrics Row
     m1, m2, m3, m4 = st.columns(4)
     with m1:
         st.metric("Total Properties", f"{len(df):,}")
@@ -322,8 +367,8 @@ elif selection == "About Project":
     with c_left:
         if home_anime and HAS_LOTTIE:
             st_lottie(home_anime, width=280)
-        else:
-            st.image("icons/house_logo.png", width=200)
+        elif LOGO_PATH.exists():
+            st.image(str(LOGO_PATH), width=200)
             
     with c_right:
         st.markdown("""
